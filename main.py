@@ -2,7 +2,7 @@
 import numpy as np
 from equilibrum import find_equilibrium_point52
 from longitudinal_model import get_state_space
-from analize import analyze_modes,calculate_short_period_approximation, calculate_phugoid_approximation
+from analize import analyze_modes,calculate_short_period_approximation, calculate_phugoid_approximation, transfert_function
 
 if __name__ == "__main__":
     # Operating Point
@@ -37,3 +37,8 @@ if __name__ == "__main__":
 
     # 5. Phugoid analysis
     calculate_phugoid_approximation(A)
+
+    # 6. Transfer function
+    tf = transfert_function(A, B, C, D)
+    print("\nTransfer Function:")
+    print(tf)

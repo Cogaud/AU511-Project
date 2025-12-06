@@ -143,3 +143,50 @@ def calculate_phugoid_approximation(A):
         print("  Approximation yielded real eigenvalues (Non-oscillatory).")
         print(f"  Eigenvalues: {eigenvalues.real}")
         return None
+
+from scipy import signal
+
+def transfert_function(A, B, C, D):
+    """
+    Calculates the transfer function of the system.
+    """
+    # Create the state space system
+    sys = signal.StateSpace(A, B, C, D)
+    
+    # Convert to Transfer Function representation
+    # sys.to_tf() returns (num, den)
+    # However, since we have MIMO (1 input, 6 outputs), 
+    # it returns num as (outputs, inputs, degree+1) and den as (outputs, degree+1)
+    # But usually den is common for all outputs in a minimal realization.
+    # scipy ss2tf returns:
+    # num : 2-D ndarray
+    # den : 1-D ndarray or 2-D ndarray
+    
+    # Let's use ss2tf directly to be safe with dimensions
+    # ss2tf(A, B, C, D, input=0) -> for the single input we have
+    num, den = signal.ss2tf(A, B, C, D, input=0)
+    
+    # Format the output string
+    output_str = ""
+    state_names = ["V", "gamma", "alpha", "q", "theta", "z"]
+    
+    for i in range(len(output_str), len(num)):
+        if i < len(state_names):
+            name = state_names[i]
+        else:
+            name = f"State {i+1}"
+            
+        n = num[i]
+        d = den
+        
+        # Create polynomial strings
+        # We can use np.poly1d to help format, or build manually
+        n_poly = np.poly1d(n)
+        d_poly = np.poly1d(d)
+        
+        output_str += f"\n--- Transfer Function for {name} / delta_m ---\n"
+        output_str += f"{n_poly}\n"
+        output_str += "-" * 50 + "\n"
+        output_str += f"{d_poly}\n"
+        
+    return output_str
