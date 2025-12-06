@@ -2,17 +2,7 @@ from __future__ import unicode_literals
 
 import numpy as np
 from math import sin, cos, pi, sqrt, atan, tan
-from matplotlib.pyplot import *
-import control
-from control.matlab import *
-from math import *
-from scipy.interpolate import interp1d
-from pylab import *
-from matplotlib . widgets import Slider
-from atm_std import *
-import scipy.interpolate
-from sisopy31 import *
-from matplotlib . pylab import *
+import matplotlib.pyplot as plt
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
@@ -157,4 +147,128 @@ def calculate_phugoid_approximation(A):
         print(f"  Eigenvalues: {eigenvalues.real}")
         return None
 
+import control
+import matplotlib.pyplot as plt
 
+def transfert_function(A, B, C, D):
+    """
+    Calculates the transfer function of the system.
+    """
+    # Create the state space system using control library
+    sys = control.ss(A, B, C, D)
+    
+    # Convert to Transfer Function representation
+    # control.ss2tf returns a TransferFunction object which has a nice string representation
+    tf = control.ss2tf(sys)
+    
+    return str(tf)
+
+def ploting_step_response(A, B, C, D):
+    """
+    Plots the step response of the system.
+    Automatically determines simulation time based on Phugoid period.
+    """
+    # Create the state space system
+    sys = control.ss(A, B, C, D)
+    
+    # 1. Determine suitable time vector based on Phugoid Mode
+    vals = np.linalg.eigvals(A)
+    # Filter for complex modes with low frequency
+    complex_modes = [e for e in vals if abs(e.imag) > 1e-6]
+    complex_modes.sort(key=lambda x: abs(x)) # Sort by magnitude (freq approx)
+    
+    # Default time
+    T_final = 100
+    
+    # Try to find Phugoid (lowest freq complex mode)
+    if complex_modes:
+        # Assuming Phugoid is the lowest frequency oscillatory mode
+        phugoid_eig = complex_modes[0] 
+        wn_ph = abs(phugoid_eig)
+        # Period = 2*pi / damped_freq approx 2*pi/wn for low damping
+        # But correctly: 2*pi / imag
+        period_ph = 2 * pi / abs(phugoid_eig.imag)
+        
+        print(f"  Detected Phugoid Period for Plotting: {period_ph:.2f} s")
+        T_final = 5 * period_ph
+    
+    # Create custom time vector
+    T = np.linspace(0, T_final, 2000)
+    
+    # Compute step response
+    # T: time vector
+    # yout: response (outputs, inputs, time) or (outputs, time)
+    res = control.step_response(sys, T)
+    yout = res.outputs
+    
+    # Check dimensions
+    # If 3D array (outputs, inputs, time), squeeze input dimension
+    if yout.ndim == 3:
+        yout = yout[:, 0, :]
+        
+    # Plot Phugoid Variables: V (idx 0), gamma (idx 1)
+    fig1, ax1 = plt.subplots(figsize=(10, 6))
+    fig1.suptitle('Phugoid Mode Response (Long Term)')
+    
+    # V / delta_m (Left Axis)
+    color = 'tab:blue'
+    ax1.set_xlabel('Time (sec)')
+    ax1.set_ylabel('Amplitude', color=color)
+    ax1.plot(T, yout[0], color=color, linewidth=2, label=r'$V / \delta_m$')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.grid(True)
+    
+    # gamma / delta_m (Right Axis)
+    color = 'tab:red'
+    ax1.set_ylabel('Amplitude', color=color)  # we already handled the x-label with ax1
+    ax1.plot(T, yout[1], color=color, linewidth=2, label=r'$\gamma / \delta_m$')
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    # Combined legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    ax1.legend(lines1, labels1, loc='best')
+    
+    plt.tight_layout()
+
+    # Plot Short Period Variables: alpha (idx 2), q (idx 3)
+    # Short period is fast, so we might want a shorter timescale for this,
+    # but the user specifically asked for Phugoid fixes. I'll stick to the same T for now
+    # or zoom in. Let's make a separate figure with shorter time if needed, 
+    # but typically one looks at the first few seconds for Short Period.
+    
+    # Let's calculate Short Period T separately
+    T_final_sp = T_final / 20 # Short period is much faster
+    if len(complex_modes) >= 4: # If we have 2 pairs
+         sp_eig = complex_modes[-1] # Highest freq
+         period_sp = 2 * pi / abs(sp_eig.imag)
+         T_final_sp = 10 * period_sp # 10 periods
+    
+    T_sp = np.linspace(0, T_final_sp, 1000)
+    res_sp = control.step_response(sys, T_sp)
+    yout_sp = res_sp.outputs
+    if yout_sp.ndim == 3:
+        yout_sp = yout_sp[:, 0, :]
+
+    fig2, ax3 = plt.subplots(figsize=(10, 6))
+    fig2.suptitle('Short Period Mode Response (Short Term)')
+    
+    # alpha / delta_m (Left Axis)
+    color = 'tab:green'
+    ax3.set_xlabel('Time (sec)')
+    ax3.set_ylabel('Amplitude', color=color)
+    ax3.plot(T_sp, yout_sp[2], color=color, linewidth=2, label=r'$\alpha / \delta_m$')
+    ax3.tick_params(axis='y', labelcolor=color)
+    ax3.grid(True)
+    
+    # q / delta_m (Right Axis)
+    color = 'k'
+    ax3.set_ylabel('Amplitude', color=color)
+    ax3.plot(T_sp, yout_sp[3], color=color, linewidth=2, label=r'$q / \delta_m$')
+    ax3.tick_params(axis='y', labelcolor=color)
+    
+    # Combined legend
+    lines3, labels3 = ax3.get_legend_handles_labels()
+    ax3.legend(lines3, labels3, loc='best')
+    
+    plt.tight_layout()
+    plt.show()
