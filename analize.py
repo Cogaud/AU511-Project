@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import numpy as np
 from math import sin, cos, pi, sqrt, atan, tan
 import matplotlib.pyplot as plt
+import control
+import sisopy31 as siso
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
@@ -147,9 +149,6 @@ def calculate_phugoid_approximation(A):
         print(f"  Eigenvalues: {eigenvalues.real}")
         return None
 
-import control
-import matplotlib.pyplot as plt
-
 def transfert_function(A, B, C, D):
     """
     Calculates the transfer function of the system.
@@ -272,3 +271,20 @@ def ploting_step_response(A, B, C, D):
     
     plt.tight_layout()
     plt.show()
+
+def sys_q_bode(A, B, C, D):
+    """
+    Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
+    Assumes state vector: [V, gamma, alpha, q, theta, z]
+    Output: q (idx 3)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    # Create the state space system
+    Ai = A[2:4, 2:4]
+    Bi = B[2:4, 0:1]
+    Cia = np.matrix ( [ [ 1, 0 ] ] )
+    Ciq = np.matrix ( [ [  0, 1 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
+
+    siso.sisotool(TqDm_ss)
