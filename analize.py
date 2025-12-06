@@ -55,4 +55,65 @@ def eig_analysis(A):
     return eigenvalues, eigenvectors
 
 
-# --- Short Period Approximation ---
+
+Ar=np . matrix ([
+    [0.0146 ,0.0362 ,0.0011 ,0],
+    [0.0716 ,0 ,0.7884 ,0],
+    [0.0716 ,0 ,0.7884 ,1.0000],
+    [0 ,0 ,13.2258 ,0.7808]
+])
+
+damp( Ar )
+
+Br=np . matrix ([ [0 ,0.1798 , 0.1798 , 13.7335]]) . T
+eigenValues , eigenVectors=np.linalg.eig ( Ar )
+print(" Eigenvalues of Ar ")
+print ( eigenValues )
+print(" Eigenvectors of Ar ")
+print ( eigenVectors )
+
+############################# Short period mode
+def short_period_mode(Ar, Br):
+    Ai=Ar [ 2 : 4 , 2 : 4 ]
+    Bi=Br [ 2 : 4 , 0 : 1 ]
+    damp( Ai )
+    Cia=np . matrix ( [ [ 1 , 0 ] ] )
+    Ciq=np . matrix ( [ [ 0 , 1 ] ] )
+    Di=np . matrix ( [ [ 0 ] ] )
+    TaDmss= control.ss ( Ai , Bi , Cia , Di )
+    print ( " Transfer function alpha / delta m = " )
+    TaDmtf= control.tf (TaDmss )
+    print ( TaDmtf )
+    print ( " Static gain of alpha / delta m =%f "%(control.dcgain(TaDmtf)))
+    TqDmss= control.ss ( Ai , Bi , Ciq , Di )
+    print ( " Transfer function q / delta m =" )
+    TqDmtf= control.ss2tf (TqDmss )
+    print ( TqDmtf )
+    print ( " Static gain of q / del ta m =%f "%(dcgain(TqDmtf)))
+    figure ( 1 )
+    Ya , Ta= control.matlab.step ( TaDmtf , arange (0 ,10 ,0.01) )
+    Yq , Tq= control.matlab.step ( TqDmtf , arange (0 ,10 ,0.01) )
+    plot(Ta ,Ya , 'b' ,Tq ,Yq ,  'r' , lw=2)
+    plot([ 0 , Ta [ 1 ] ] , [Ya[1] ,Ya[ 1] ] , 'k--' , lw=1)
+    plot([ 0 , Ta [ 1 ] ] , [ 1.05 *Ya[1] ,1.05*Ya[1] ] , 'k--' , lw=1)
+    plot([ 0 , Ta [ 1 ] ] , [ 0.95 *Ya[1] ,0.95*Ya[1] ] , 'k--' , lw=1)
+    plot([ 0 , Ta [ 1 ] ] , [Yq[1] ,Yq[1] ] , 'k--' , lw=1)
+    plot([ 0 , Ta [ 1 ] ] , [ 1.05 *Yq[1] ,1.05*Yq[1] ] , 'k--' , lw=1)
+    plot([ 0 , Ta [ 1 ] ] , [ 0.95 *Yq[1] ,0.95*Yq[1] ] , 'k--' , lw=1)
+    minorticks_on( )
+    grid( b=True , which= 'both' )
+    # grid ( True )
+    title( r' Step response $\alpha/\delta_m$ et $q/\ delta_m$ ' )
+    legend(' alpha/delta_m ' , ' q / delta_m ' )
+    xlabel( ' Time ( s ) ' )
+    ylabel( 'alpha ( rad ) & q ( rad / s ) ' )
+    Osa , Tra , Tsa= stepinfo (Ta ,Ya)
+    Osq , Trq , Tsq= stepinfo (Tq ,Yq)
+    yya=interp1d (Ta ,Ya)
+    plot ( Tsa , yya ( Tsa ) ,  'bs'  )
+    text ( Tsa , yya ( Tsa )-0.2,Tsa )
+    yyq=interp1d (Tq ,Yq)
+    plot ( Tsq , yyq( Tsq ) ,  'rs ' )
+    text ( Tsq , yyq( Tsq )-0.2 , Tsq )
+    print ( ' Alpha Settling time 5%% = %f s '%Tsa )
+    print ( ' q Settling time 5%% = %f s '%Tsq )
