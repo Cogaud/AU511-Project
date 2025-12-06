@@ -34,6 +34,7 @@ def get_state_space(eq_data):
 
     Cxa = 2 * k * Cz_eq * Cza
     Cma = (X/l_ref) * (Cxa * sin(alpha_eq) + Cza * cos(alpha_eq))
+    print(f"  Cma:     {Cma:.4f}")
     Cxdm = 2 * k * Cz_eq * Czdm
     Cm_dm = (Y/l_ref) * (Cxdm * sin(alpha_eq) + Czdm * cos(alpha_eq))
     # Dynamic Pressure
