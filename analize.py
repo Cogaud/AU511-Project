@@ -211,16 +211,15 @@ def ploting_step_response(A, B, C, D):
     # V / delta_m (Left Axis)
     color = 'tab:blue'
     ax1.set_xlabel('Time (sec)')
-    ax1.set_ylabel('Amplitude', color=color)
+    ax1.set_ylabel('Amplitude')
     ax1.plot(T, yout[0], color=color, linewidth=2, label=r'$V / \delta_m$')
-    ax1.tick_params(axis='y', labelcolor=color)
     ax1.grid(True)
     
     # gamma / delta_m (Right Axis)
     color = 'tab:red'
-    ax1.set_ylabel('Amplitude', color=color)  # we already handled the x-label with ax1
+    ax1.set_ylabel('Amplitude')
     ax1.plot(T, yout[1], color=color, linewidth=2, label=r'$\gamma / \delta_m$')
-    ax1.tick_params(axis='y', labelcolor=color)
+
     
     # Combined legend
     lines1, labels1 = ax1.get_legend_handles_labels()
@@ -253,16 +252,14 @@ def ploting_step_response(A, B, C, D):
     # alpha / delta_m (Left Axis)
     color = 'tab:green'
     ax3.set_xlabel('Time (sec)')
-    ax3.set_ylabel('Amplitude', color=color)
+    ax3.set_ylabel('Amplitude')
     ax3.plot(T_sp, yout_sp[2], color=color, linewidth=2, label=r'$\alpha / \delta_m$')
-    ax3.tick_params(axis='y', labelcolor=color)
     ax3.grid(True)
     
     # q / delta_m (Right Axis)
     color = 'k'
-    ax3.set_ylabel('Amplitude', color=color)
+    ax3.set_ylabel('Amplitude')
     ax3.plot(T_sp, yout_sp[3], color=color, linewidth=2, label=r'$q / \delta_m$')
-    ax3.tick_params(axis='y', labelcolor=color)
     
     # Combined legend
     lines3, labels3 = ax3.get_legend_handles_labels()
