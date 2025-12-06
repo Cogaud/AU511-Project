@@ -1,7 +1,7 @@
+from __future__ import unicode_literals
+
 import numpy as np
 from math import sin, cos, pi, sqrt, atan, tan
-
-from __future__ import unicode_literals
 from matplotlib.pyplot import *
 import control
 from control.matlab import *
@@ -9,7 +9,6 @@ from math import *
 from scipy.interpolate import interp1d
 from pylab import *
 from matplotlib . widgets import Slider
-import numpy as np
 from atm_std import *
 import scipy.interpolate
 from sisopy31 import *
@@ -124,18 +123,18 @@ def calculate_phugoid_approximation(A):
     """
     Calculates Phugoid mode characteristics using the reduced order approximation.
     Assumes state vector: [V, gamma, alpha, q, theta, z]
-    Uses submatrix for alpha (idx 2) and q (idx 3).
+    Uses submatrix for V (idx 0) and gamma (idx 1).
     """
     print("\n--- Phugoid Approximation (Reduced Order) ---")
     
     # Extract submatrix for alpha and q
-    # Indices: 2 (alpha), 3 (q)
+    # Indices: 0 (V), 1 (gamma)
     A_sp = A[0:2, 0:2]
     
     eigenvalues = np.linalg.eigvals(A_sp)
     
     # Check for complex pair
-    # We expect a conjugate pair for standard stable short period
+    # We expect a conjugate pair for standard stable phugoid
     
     # Check if complex
     if np.iscomplex(eigenvalues).any():
@@ -157,4 +156,5 @@ def calculate_phugoid_approximation(A):
         print("  Approximation yielded real eigenvalues (Non-oscillatory).")
         print(f"  Eigenvalues: {eigenvalues.real}")
         return None
+
 
