@@ -2,7 +2,7 @@
 import numpy as np
 from equilibrum import find_equilibrium_point52
 from longitudinal_model import get_state_space
-from analize import analyze_modes,calculate_short_period_approximation, calculate_phugoid_approximation, transfert_function
+from analize import analyze_modes,calculate_short_period_approximation, calculate_phugoid_approximation, transfert_function, ploting_step_response
 
 if __name__ == "__main__":
     # Operating Point
@@ -42,3 +42,6 @@ if __name__ == "__main__":
     tf = transfert_function(A, B, C, D)
     print("\nTransfer Function:")
     print(tf)
+
+    # 7. Step response
+    ploting_step_response(A, B, C, D)

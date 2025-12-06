@@ -54,7 +54,7 @@ def get_state_space(eq_data):
     # Composant m
     mv = 0
     ma = (Q * S * l_ref * Cma)/Iy
-    mq = (Q * S * l_ref**2 * Cmq)/Iy
+    mq = (Q * S * l_ref**2 * Cmq)/(V_eq * Iy)
     mdm = (Q * S * l_ref * Cm_dm)/Iy
 
     # --- Equations of Motion Linearization ---
