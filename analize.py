@@ -19,101 +19,142 @@ from matplotlib . pylab import *
 def analyze_modes(A):
     eigenvalues = np.linalg.eigvals(A)
     print("\n--- Open Loop Modes Analysis ---")
-
-    # Filter for complex pairs (Oscillatory modes)
-    # Usually 2 pairs: Short Period (fast, well damped) and Phugoid (slow, poorly damped)
-    # And real poles (subsidence or spiral, though usually longitudinal is 2 pairs)
-
-    # Sort by frequency (imaginary part)
-    print(f"{'Mode':<15} | {'Eigenvalue':<25} | {'Freq (rad/s)':<12} | {'Damping':<10}")
-    print("-" * 70)
-
-    processed = [False] * len(eigenvalues)
+   
+    # Store modes for classification
+    complex_modes = []
+    real_modes = []
+    
+    # Helper to check if value is already processed (for conjugates)
+    processed_indices = set()
+    
 
     for i in range(len(eigenvalues)):
-        if processed[i]: continue
-
+        if i in processed_indices:
+            continue
+            
         eig = eigenvalues[i]
+        
+        # Check for complex pair
         if abs(eig.imag) > 1e-6:
-            # Complex pair
+            # Find conjugate
+            conj_found = False
+            for j in range(i + 1, len(eigenvalues)):
+                if j not in processed_indices:
+                    other = eigenvalues[j]
+                    if abs(other.real - eig.real) < 1e-5 and abs(other.imag + eig.imag) < 1e-5:
+                        processed_indices.add(j)
+                        conj_found = True
+                        break
+            
             omega_n = sqrt(eig.real ** 2 + eig.imag ** 2)
             damping = -eig.real / omega_n
-            print(f"{'Oscillatory':<15} | {eig:.4f}        | {omega_n:.4f}       | {damping:.4f}")
-
-            # Mark conjugate as processed
-            for j in range(i + 1, len(eigenvalues)):
-                if abs(eigenvalues[j].imag + eig.imag) < 1e-5 and abs(eigenvalues[j].real - eig.real) < 1e-5:
-                    processed[j] = True
+            period = 2 * pi / abs(eig.imag)
+            complex_modes.append({
+                'eig': eig,
+                'wn': omega_n,
+                'zeta': damping,
+                'period': period
+            })
         else:
-            # Real pole
-            print(f"{'Real':<15} | {eig.real:.4f} + 0j           | {'-':<12} | {'-':<10}")
+            real_modes.append(eig.real)
+
+    # Sort complex modes by frequency (Low freq = Phugoid, High freq = Short Period)
+    complex_modes.sort(key=lambda x: x['wn'])
+    
+    print(f"{'Mode Type':<15} | {'Eigenvalue':<28} | {'Freq (rad/s)':<12} | {'Damping':<10} | {'Period (s)':<10}")
+    print("-" * 85)
+    
+    # Classify and Print Complex Modes
+    for i, mode in enumerate(complex_modes):
+        name = "Oscillatory"
+        # Simple heuristic for longitudinal: 
+        # If we have exactly 2 pairs, lower is Phugoid, higher is Short Period
+        if len(complex_modes) == 2:
+            if i == 0: name = "Phugoid"
+            else: name = "Short Period"
+            
+        e = mode['eig']
+        print(f"{name:<15} | {e.real:.4f} ± {abs(e.imag):.4f}j    | {mode['wn']:<12.4f} | {mode['zeta']:<10.4f} | {mode['period']:<10.2f}")
+
+    # Print Real Modes
+    for r in real_modes:
+        print(f"{'Real':<15} | {r:.4f} + 0.0000j          | {'-':<12} | {'-':<10} | {'-':<10}")
 
     return eigenvalues
 
-def eig_analysis(A):
-    eigenvalues, eigenvectors  = np.linalg.eig(A)
-    return eigenvalues, eigenvectors
+def calculate_short_period_approximation(A):
+    """
+    Calculates Short Period mode characteristics using the reduced order approximation.
+    Assumes state vector: [V, gamma, alpha, q, theta, z]
+    Uses submatrix for alpha (idx 2) and q (idx 3).
+    """
+    print("\n--- Short Period Approximation (Reduced Order) ---")
+    
+    # Extract submatrix for alpha and q
+    # Indices: 2 (alpha), 3 (q)
+    A_sp = A[2:4, 2:4]
+    
+    eigenvalues = np.linalg.eigvals(A_sp)
+    
+    # Check for complex pair
+    # We expect a conjugate pair for standard stable short period
+    
+    # Check if complex
+    if np.iscomplex(eigenvalues).any():
+        # Take the one with positive imaginary part or just the first one
+        eig = eigenvalues[0]
+        
+        # Ensure we work with the complex values
+        wn = sqrt(eig.real**2 + eig.imag**2)
+        zeta = -eig.real / wn
+        period = 2 * pi / abs(eig.imag) if eig.imag != 0 else float('inf')
+        
+        print(f"  Eigenvalues:       {eig.real:.4f} ± {abs(eig.imag):.4f}j")
+        print(f"  Natural Freq (wn): {wn:.4f} rad/s")
+        print(f"  Damping (zeta):    {zeta:.4f}")
+        print(f"  Period:            {period:.4f} s")
+        
+        return wn, zeta
+    else:
+        print("  Approximation yielded real eigenvalues (Non-oscillatory).")
+        print(f"  Eigenvalues: {eigenvalues.real}")
+        return None
 
+def calculate_phugoid_approximation(A):
+    """
+    Calculates Phugoid mode characteristics using the reduced order approximation.
+    Assumes state vector: [V, gamma, alpha, q, theta, z]
+    Uses submatrix for alpha (idx 2) and q (idx 3).
+    """
+    print("\n--- Phugoid Approximation (Reduced Order) ---")
+    
+    # Extract submatrix for alpha and q
+    # Indices: 2 (alpha), 3 (q)
+    A_sp = A[0:2, 0:2]
+    
+    eigenvalues = np.linalg.eigvals(A_sp)
+    
+    # Check for complex pair
+    # We expect a conjugate pair for standard stable short period
+    
+    # Check if complex
+    if np.iscomplex(eigenvalues).any():
+        # Take the one with positive imaginary part or just the first one
+        eig = eigenvalues[0]
+        
+        # Ensure we work with the complex values
+        wn = sqrt(eig.real**2 + eig.imag**2)
+        zeta = -eig.real / wn
+        period = 2 * pi / abs(eig.imag) if eig.imag != 0 else float('inf')
+        
+        print(f"  Eigenvalues:       {eig.real:.4f} ± {abs(eig.imag):.4f}j")
+        print(f"  Natural Freq (wn): {wn:.4f} rad/s")
+        print(f"  Damping (zeta):    {zeta:.4f}")
+        print(f"  Period:            {period:.4f} s")
+        
+        return wn, zeta
+    else:
+        print("  Approximation yielded real eigenvalues (Non-oscillatory).")
+        print(f"  Eigenvalues: {eigenvalues.real}")
+        return None
 
-
-Ar=np . matrix ([
-    [0.0146 ,0.0362 ,0.0011 ,0],
-    [0.0716 ,0 ,0.7884 ,0],
-    [0.0716 ,0 ,0.7884 ,1.0000],
-    [0 ,0 ,13.2258 ,0.7808]
-])
-
-damp( Ar )
-
-Br=np . matrix ([ [0 ,0.1798 , 0.1798 , 13.7335]]) . T
-eigenValues , eigenVectors=np.linalg.eig ( Ar )
-print(" Eigenvalues of Ar ")
-print ( eigenValues )
-print(" Eigenvectors of Ar ")
-print ( eigenVectors )
-
-############################# Short period mode
-def short_period_mode(Ar, Br):
-    Ai=Ar [ 2 : 4 , 2 : 4 ]
-    Bi=Br [ 2 : 4 , 0 : 1 ]
-    damp( Ai )
-    Cia=np . matrix ( [ [ 1 , 0 ] ] )
-    Ciq=np . matrix ( [ [ 0 , 1 ] ] )
-    Di=np . matrix ( [ [ 0 ] ] )
-    TaDmss= control.ss ( Ai , Bi , Cia , Di )
-    print ( " Transfer function alpha / delta m = " )
-    TaDmtf= control.tf (TaDmss )
-    print ( TaDmtf )
-    print ( " Static gain of alpha / delta m =%f "%(control.dcgain(TaDmtf)))
-    TqDmss= control.ss ( Ai , Bi , Ciq , Di )
-    print ( " Transfer function q / delta m =" )
-    TqDmtf= control.ss2tf (TqDmss )
-    print ( TqDmtf )
-    print ( " Static gain of q / del ta m =%f "%(dcgain(TqDmtf)))
-    figure ( 1 )
-    Ya , Ta= control.matlab.step ( TaDmtf , arange (0 ,10 ,0.01) )
-    Yq , Tq= control.matlab.step ( TqDmtf , arange (0 ,10 ,0.01) )
-    plot(Ta ,Ya , 'b' ,Tq ,Yq ,  'r' , lw=2)
-    plot([ 0 , Ta [ 1 ] ] , [Ya[1] ,Ya[ 1] ] , 'k--' , lw=1)
-    plot([ 0 , Ta [ 1 ] ] , [ 1.05 *Ya[1] ,1.05*Ya[1] ] , 'k--' , lw=1)
-    plot([ 0 , Ta [ 1 ] ] , [ 0.95 *Ya[1] ,0.95*Ya[1] ] , 'k--' , lw=1)
-    plot([ 0 , Ta [ 1 ] ] , [Yq[1] ,Yq[1] ] , 'k--' , lw=1)
-    plot([ 0 , Ta [ 1 ] ] , [ 1.05 *Yq[1] ,1.05*Yq[1] ] , 'k--' , lw=1)
-    plot([ 0 , Ta [ 1 ] ] , [ 0.95 *Yq[1] ,0.95*Yq[1] ] , 'k--' , lw=1)
-    minorticks_on( )
-    grid( b=True , which= 'both' )
-    # grid ( True )
-    title( r' Step response $\alpha/\delta_m$ et $q/\ delta_m$ ' )
-    legend(' alpha/delta_m ' , ' q / delta_m ' )
-    xlabel( ' Time ( s ) ' )
-    ylabel( 'alpha ( rad ) & q ( rad / s ) ' )
-    Osa , Tra , Tsa= stepinfo (Ta ,Ya)
-    Osq , Trq , Tsq= stepinfo (Tq ,Yq)
-    yya=interp1d (Ta ,Ya)
-    plot ( Tsa , yya ( Tsa ) ,  'bs'  )
-    text ( Tsa , yya ( Tsa )-0.2,Tsa )
-    yyq=interp1d (Tq ,Yq)
-    plot ( Tsq , yyq( Tsq ) ,  'rs ' )
-    text ( Tsq , yyq( Tsq )-0.2 , Tsq )
-    print ( ' Alpha Settling time 5%% = %f s '%Tsa )
-    print ( ' q Settling time 5%% = %f s '%Tsq )

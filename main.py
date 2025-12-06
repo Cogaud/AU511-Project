@@ -2,7 +2,7 @@
 import numpy as np
 from equilibrum import find_equilibrium_point52
 from longitudinal_model import get_state_space
-from analize import analyze_modes
+from analize import analyze_modes,calculate_short_period_approximation, calculate_phugoid_approximation
 
 if __name__ == "__main__":
     # Operating Point
@@ -31,3 +31,9 @@ if __name__ == "__main__":
 
     # 3. Analyze Modes
     analyze_modes(A)
+
+    # 4. Short period analysis
+    calculate_short_period_approximation(A)
+
+    # 5. Phugoid analysis
+    calculate_phugoid_approximation(A)
