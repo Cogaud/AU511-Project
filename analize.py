@@ -1,5 +1,19 @@
 import numpy as np
 from math import sin, cos, pi, sqrt, atan, tan
+
+from __future__ import unicode_literals
+from matplotlib.pyplot import *
+import control
+from control.matlab import *
+from math import *
+from scipy.interpolate import interp1d
+from pylab import *
+from matplotlib . widgets import Slider
+import numpy as np
+from atm_std import *
+import scipy.interpolate
+from sisopy31 import *
+from matplotlib . pylab import *
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
@@ -11,7 +25,6 @@ def analyze_modes(A):
     # And real poles (subsidence or spiral, though usually longitudinal is 2 pairs)
 
     # Sort by frequency (imaginary part)
-
     print(f"{'Mode':<15} | {'Eigenvalue':<25} | {'Freq (rad/s)':<12} | {'Damping':<10}")
     print("-" * 70)
 
@@ -37,3 +50,9 @@ def analyze_modes(A):
 
     return eigenvalues
 
+def eig_analysis(A):
+    eigenvalues, eigenvectors  = np.linalg.eig(A)
+    return eigenvalues, eigenvectors
+
+
+# --- Short Period Approximation ---
