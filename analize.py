@@ -288,3 +288,20 @@ def sys_q_bode(A, B, C, D):
     TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
 
     siso.sisotool(TqDm_ss)
+
+def sys_gamma_bode(A,B,C,D):
+    """
+    Plots the Bode plot for the angle (gamma) response to elevator deflection (delta_m).
+    Assumes state vector: [V, gamma, alpha, q, theta, z]
+    Output: gamma (idx 1)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    # Create the state space system
+    Ai = A[0:2, 0:2]
+    Bi = B[0:2, 0:1]
+    Cia = np.matrix ( [ [ 1, 0 ] ] )
+    Ciq = np.matrix ( [ [  0, 1 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TgDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
+
+    siso.sisotool(TgDm_ss)
