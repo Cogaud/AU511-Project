@@ -1,12 +1,16 @@
+from __future__ import unicode_literals
+
 import numpy as np
 from math import sin, cos, pi, sqrt, atan, tan
 import matplotlib.pyplot as plt
+import control
+import sisopy31 as siso
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
     eigenvalues = np.linalg.eigvals(A)
     print("\n--- Open Loop Modes Analysis ---")
-    
+   
     # Store modes for classification
     complex_modes = []
     real_modes = []
@@ -14,6 +18,7 @@ def analyze_modes(A):
     # Helper to check if value is already processed (for conjugates)
     processed_indices = set()
     
+
     for i in range(len(eigenvalues)):
         if i in processed_indices:
             continue
@@ -68,7 +73,6 @@ def analyze_modes(A):
 
     return eigenvalues
 
-
 def calculate_short_period_approximation(A):
     """
     Calculates Short Period mode characteristics using the reduced order approximation.
@@ -111,18 +115,18 @@ def calculate_phugoid_approximation(A):
     """
     Calculates Phugoid mode characteristics using the reduced order approximation.
     Assumes state vector: [V, gamma, alpha, q, theta, z]
-    Uses submatrix for alpha (idx 2) and q (idx 3).
+    Uses submatrix for V (idx 0) and gamma (idx 1).
     """
     print("\n--- Phugoid Approximation (Reduced Order) ---")
     
     # Extract submatrix for alpha and q
-    # Indices: 2 (alpha), 3 (q)
+    # Indices: 0 (V), 1 (gamma)
     A_sp = A[0:2, 0:2]
     
     eigenvalues = np.linalg.eigvals(A_sp)
     
     # Check for complex pair
-    # We expect a conjugate pair for standard stable short period
+    # We expect a conjugate pair for standard stable phugoid
     
     # Check if complex
     if np.iscomplex(eigenvalues).any():
@@ -144,9 +148,6 @@ def calculate_phugoid_approximation(A):
         print("  Approximation yielded real eigenvalues (Non-oscillatory).")
         print(f"  Eigenvalues: {eigenvalues.real}")
         return None
-
-import control
-import matplotlib.pyplot as plt
 
 def transfert_function(A, B, C, D):
     """
@@ -270,3 +271,20 @@ def ploting_step_response(A, B, C, D):
     
     plt.tight_layout()
     plt.show()
+
+def sys_q_bode(A, B, C, D):
+    """
+    Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
+    Assumes state vector: [V, gamma, alpha, q, theta, z]
+    Output: q (idx 3)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    # Create the state space system
+    Ai = A[2:4, 2:4]
+    Bi = B[2:4, 0:1]
+    Cia = np.matrix ( [ [ 1, 0 ] ] )
+    Ciq = np.matrix ( [ [  0, 1 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
+
+    siso.sisotool(TqDm_ss)
