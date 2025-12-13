@@ -50,3 +50,16 @@ if __name__ == "__main__":
 
     # 8. sisotool of q
     sys_q_bode(A, B, C, D)
+    # gain 
+    Kr = -0.09
+
+    # 9. Closed loop 
+    Ak = A - Kr * B * C
+    Bk = Kr * B
+    Ck = C
+    Dk = Kr * D
+    tf_k = transfert_function(Ak, Bk, Ck, Dk)
+    print("\nTransfer Function:")
+    print(tf_k)
+    analyze_modes(A)
+    ploting_step_response(Ak, Bk, Ck, Dk)
