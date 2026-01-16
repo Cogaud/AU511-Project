@@ -160,7 +160,27 @@ def transfert_function(A, B, C, D):
     # control.ss2tf returns a TransferFunction object which has a nice string representation
     tf = control.ss2tf(sys)
     
-    return str(tf)
+    return tf
+
+def pole_info(A): 
+    eigenvalues = np.linalg.eigvals(A)
+
+    # Check for complex pair
+    # We expect a conjugate pair for standard stable phugoid
+    
+    # Check if complex
+    if np.iscomplex(eigenvalues).any():
+        # Take the one with positive imaginary part or just the first one
+        eig = eigenvalues[0]
+        
+        # Ensure we work with the complex values
+        wn = sqrt(eig.real**2 + eig.imag**2)
+        zeta = -eig.real / wn
+        period = 2 * pi / abs(eig.imag) if eig.imag != 0 else float('inf')
+        
+        print(f"  Natural Freq (wn): {wn:.4f} rad/s")
+        print(f"  Damping (zeta):    {zeta:.4f}")
+        print(f"  Period:            {period:.4f} s")
 
 def ploting_step_response(A, B, C, D):
     """
@@ -275,19 +295,34 @@ def ploting_step_response(A, B, C, D):
 def sys_q_bode(A, B, C, D):
     """
     Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
-    Assumes state vector: [V, gamma, alpha, q, theta, z]
-    Output: q (idx 3)
+    Assumes state vector: [gamma, alpha, q, theta, z]
+    Output: q (idx 2)
     Input: delta_m (assumed to be the first input, idx 0)
     """
     # Create the state space system
-    Ai = A[2:4, 2:4]
-    Bi = B[2:4, 0:1]
-    Cia = np.matrix ( [ [ 1, 0 ] ] )
+    Ai = A[1:3, 1:3]
+    Bi = B[1:3, 0:1]
     Ciq = np.matrix ( [ [  0, 1 ] ] )
     Di = np.matrix ( [ [ 0 ] ] )
     TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
 
     siso.sisotool(TqDm_ss)
+
+def sys_alpha_bode(A, B, C, D):
+    """
+    Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
+    Assumes state vector: [gamma, alpha, q, theta, z]
+    Output: alpha (idx 1)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    # Create the state space system
+    Ai = A[1:3, 1:3]
+    Bi = B[1:3, 0:1]
+    Cia = np.matrix ( [ [  1, 0 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TaDm_ss= control.matlab.ss ( Ai , Bi , Cia , Di )
+
+    siso.sisotool(TaDm_ss)
 
 def sys_gamma_bode(A,B,C,D):
     """
@@ -299,9 +334,9 @@ def sys_gamma_bode(A,B,C,D):
     # Create the state space system
     Ai = A[0:2, 0:2]
     Bi = B[0:2, 0:1]
-    Cia = np.matrix ( [ [ 1, 0 ] ] )
-    Ciq = np.matrix ( [ [  0, 1 ] ] )
+    Cig = np.matrix ( [ [ 1, 0 ] ] )
+    Cia = np.matrix ( [ [  0, 1 ] ] )
     Di = np.matrix ( [ [ 0 ] ] )
-    TgDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
+    TgDm_ss= control.matlab.ss ( Ai , Bi , Cig , Di )
 
     siso.sisotool(TgDm_ss)
