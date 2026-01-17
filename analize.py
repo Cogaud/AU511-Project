@@ -5,6 +5,8 @@ from math import sin, cos, pi, sqrt, atan, tan
 import matplotlib.pyplot as plt
 import control
 import sisopy31 as siso
+from scipy.optimize import brentq
+from aircraft_data import *
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
@@ -304,25 +306,9 @@ def sys_q_bode(A, B, C, D):
     Bi = B[1:3, 0:1]
     Ciq = np.matrix ( [ [  0, 1 ] ] )
     Di = np.matrix ( [ [ 0 ] ] )
-    TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
-
-    siso.sisotool(TqDm_ss)
-
-def sys_alpha_bode(A, B, C, D):
-    """
-    Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
-    Assumes state vector: [gamma, alpha, q, theta, z]
-    Output: alpha (idx 1)
-    Input: delta_m (assumed to be the first input, idx 0)
-    """
-    # Create the state space system
-    Ai = A[1:3, 1:3]
-    Bi = B[1:3, 0:1]
-    Cia = np.matrix ( [ [  1, 0 ] ] )
-    Di = np.matrix ( [ [ 0 ] ] )
-    TaDm_ss= control.matlab.ss ( Ai , Bi , Cia , Di )
-
-    siso.sisotool(TaDm_ss)
+    TqDm_ss= control.ss ( Ai , Bi , Ciq , Di )
+    TqDm_tf = control.ss2tf(TqDm_ss)
+    siso.sisotool(TqDm_tf)
 
 def sys_gamma_bode(A,B,C,D):
     """
@@ -332,11 +318,82 @@ def sys_gamma_bode(A,B,C,D):
     Input: delta_m (assumed to be the first input, idx 0)
     """
     # Create the state space system
-    Ai = A[0:2, 0:2]
-    Bi = B[0:2, 0:1]
-    Cig = np.matrix ( [ [ 1, 0 ] ] )
-    Cia = np.matrix ( [ [  0, 1 ] ] )
-    Di = np.matrix ( [ [ 0 ] ] )
-    TgDm_ss= control.matlab.ss ( Ai , Bi , Cig , Di )
+    Cig = C[0, :]
+    Di = D[0, :]
+    TgDm_ss= control.ss ( A , B , Cig , Di )
+    TgDm_tf = control.ss2tf(TgDm_ss)
 
-    siso.sisotool(TgDm_ss)
+    siso.sisotool(TgDm_tf)
+
+def sys_z_bode(A,B,C,D):
+    """
+    Plots the Bode plot for the altitude z response to elevator deflection (delta_m).
+    Assumes state vector: [gamma, alpha, q, theta, z]
+    Output: z (idx 4)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    Cz = np.matrix ( [ [ 0, 0, 0, 0, 1 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TzDm_ss= control.ss ( A , B , Cz , Di )
+    TzDm_tf = control.ss2tf(TzDm_ss)
+
+    siso.sisotool(TzDm_tf)
+
+def saturation_analysis(eq_res, delta_n_z):
+    """
+    Analyze the effect of actuator saturation on the maximum angle of attack.
+    """
+    a_eq = eq_res['alpha_eq_deg']  # deg
+    g = 9.81  # m/s2
+    C_z_a = coefs['C_z_a']  # per radian
+    rho = eq_res['rho']  # kg/m3
+    V = eq_res['V_eq']  # m/s
+
+    a_0 = a_eq - (((2 * m * g) / (rho * S * V**2 * C_z_a)))
+    a_max = a_eq + (a_eq - a_0) * delta_n_z
+
+    return a_max
+
+
+def response_alpha_to_gamma(sys_closed, gamma_csat, delta_n_z=3.0, eq_res=None, t_final=10):
+    """
+    Simule la réponse α en fonction de γ_csat et retourne max(α(t)) - α_max
+    
+    Paramètres:
+    - sys_closed: système en boucle fermée (transfert entre γ_csat et α)
+    - gamma_csat: amplitude de l'échelon d'entrée
+    - delta_n_z: facteur de charge transversal (par défaut 3 g)
+    - eq_res: dictionnaire de l'équilibre
+    - t_final: temps final de simulation
+    """
+    # Calculer α_max
+    alpha_max = saturation_analysis(eq_res, delta_n_z)
+    
+    # Simuler la réponse à un échelon unitaire
+    T = np.linspace(0, t_final, 1000)
+    res = control.step_response(sys_closed, T=T)
+    t = res.time
+    y = res.outputs
+    # Multiplier par l'amplitude γ_csat (réponse pour échelon d'amplitude gamma_csat)
+    y = y * gamma_csat
+    # print("y : ", y)
+    # print("y shape : ",np.shape(y))
+    # Extraire α (indice 1 : alpha) de la réponse
+    # alpha_response = y[1, :]  # 2ème sortie est alpha
+    
+    # Retourner la différence max(α(t)) - α_max
+    return np.max(y) - alpha_max
+
+def find_gamma_max(sys_closed, delta_n_z=3.0, eq_res=None, gamma_min=-100, gamma_max=100):
+    """
+    Trouve γ_max tel que max(α(t)) = α_max
+    Utilise la méthode de bisection
+    """
+    def f(gamma_csat):
+        return response_alpha_to_gamma(sys_closed, gamma_csat, delta_n_z, eq_res)
+    
+    # Bisection
+    gamma_optimal = brentq(f, gamma_min, gamma_max)
+    return gamma_optimal
+
+
