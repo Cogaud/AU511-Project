@@ -5,6 +5,8 @@ from math import sin, cos, pi, sqrt, atan, tan
 import matplotlib.pyplot as plt
 import control
 import sisopy31 as siso
+from scipy.optimize import brentq
+from aircraft_data import *
 # --- 3. Mode Analysis ---
 
 def analyze_modes(A):
@@ -160,7 +162,27 @@ def transfert_function(A, B, C, D):
     # control.ss2tf returns a TransferFunction object which has a nice string representation
     tf = control.ss2tf(sys)
     
-    return str(tf)
+    return tf
+
+def pole_info(A): 
+    eigenvalues = np.linalg.eigvals(A)
+
+    # Check for complex pair
+    # We expect a conjugate pair for standard stable phugoid
+    
+    # Check if complex
+    if np.iscomplex(eigenvalues).any():
+        # Take the one with positive imaginary part or just the first one
+        eig = eigenvalues[0]
+        
+        # Ensure we work with the complex values
+        wn = sqrt(eig.real**2 + eig.imag**2)
+        zeta = -eig.real / wn
+        period = 2 * pi / abs(eig.imag) if eig.imag != 0 else float('inf')
+        
+        print(f"  Natural Freq (wn): {wn:.4f} rad/s")
+        print(f"  Damping (zeta):    {zeta:.4f}")
+        print(f"  Period:            {period:.4f} s")
 
 def ploting_step_response(A, B, C, D):
     """
@@ -275,19 +297,18 @@ def ploting_step_response(A, B, C, D):
 def sys_q_bode(A, B, C, D):
     """
     Plots the Bode plot for the pitch rate (q) response to elevator deflection (delta_m).
-    Assumes state vector: [V, gamma, alpha, q, theta, z]
-    Output: q (idx 3)
+    Assumes state vector: [gamma, alpha, q, theta, z]
+    Output: q (idx 2)
     Input: delta_m (assumed to be the first input, idx 0)
     """
     # Create the state space system
-    Ai = A[2:4, 2:4]
-    Bi = B[2:4, 0:1]
-    Cia = np.matrix ( [ [ 1, 0 ] ] )
+    Ai = A[1:3, 1:3]
+    Bi = B[1:3, 0:1]
     Ciq = np.matrix ( [ [  0, 1 ] ] )
     Di = np.matrix ( [ [ 0 ] ] )
-    TqDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
-
-    siso.sisotool(TqDm_ss)
+    TqDm_ss= control.ss ( Ai , Bi , Ciq , Di )
+    TqDm_tf = control.ss2tf(TqDm_ss)
+    siso.sisotool(TqDm_tf)
 
 def sys_gamma_bode(A,B,C,D):
     """
@@ -297,11 +318,40 @@ def sys_gamma_bode(A,B,C,D):
     Input: delta_m (assumed to be the first input, idx 0)
     """
     # Create the state space system
-    Ai = A[0:2, 0:2]
-    Bi = B[0:2, 0:1]
-    Cia = np.matrix ( [ [ 1, 0 ] ] )
-    Ciq = np.matrix ( [ [  0, 1 ] ] )
-    Di = np.matrix ( [ [ 0 ] ] )
-    TgDm_ss= control.matlab.ss ( Ai , Bi , Ciq , Di )
+    Cig = C[0, :]
+    Di = D[0, :]
+    TgDm_ss= control.ss ( A , B , Cig , Di )
+    TgDm_tf = control.ss2tf(TgDm_ss)
 
-    siso.sisotool(TgDm_ss)
+    siso.sisotool(TgDm_tf)
+
+def sys_z_bode(A,B,C,D):
+    """
+    Plots the Bode plot for the altitude z response to elevator deflection (delta_m).
+    Assumes state vector: [gamma, alpha, q, theta, z]
+    Output: z (idx 4)
+    Input: delta_m (assumed to be the first input, idx 0)
+    """
+    Cz = np.matrix ( [ [ 0, 0, 0, 0, 1 ] ] )
+    Di = np.matrix ( [ [ 0 ] ] )
+    TzDm_ss= control.ss ( A , B , Cz , Di )
+    TzDm_tf = control.ss2tf(TzDm_ss)
+
+    siso.sisotool(TzDm_tf)
+
+def saturation_analysis(eq_res, delta_n_z):
+    """
+    Analyze the effect of actuator saturation on the maximum angle of attack.
+    """
+    a_eq = eq_res['alpha_eq_deg']  # deg
+    g = 9.81  # m/s2
+    C_z_a = coefs['C_z_a']  # per radian
+    rho = eq_res['rho']  # kg/m3
+    V = eq_res['V_eq']  # m/s
+
+    a_0 = a_eq - (((2 * m * g) / (rho * S * V**2 * C_z_a)))
+    a_max = a_eq + (a_eq - a_0) * delta_n_z
+
+    return a_max
+
+
