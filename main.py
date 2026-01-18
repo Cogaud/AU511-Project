@@ -6,7 +6,7 @@ from analize import *
 from sisopy31 import damp
 # from control import matlab
 import control
-import matplotlib.pyplot
+from scipy.optimize import bisect
 
 if __name__ == "__main__":
     # Operating Point
@@ -182,44 +182,50 @@ if __name__ == "__main__":
     ylabel(r'$z$ (rad/s)')
     show()
 
-
-    # --- Saturation Analysis: Find γ_max ---
-    print("\n" + "="*60)
-    print("SATURATION ANALYSIS: Finding γ_max for Δn_z = 3g")
-    print("="*60)
+    # # --- Saturation Analysis: Find γ_max ---
+    # print("\n" + "="*60)
+    # print("SATURATION ANALYSIS: Finding γ_max for Δn_z = 3g")
+    # print("="*60)
 
     # Créer le système complet en boucle fermée (γ et q boucles)
     # avec toutes les 5 sorties (γ, α, q, θ, z)
-    sys_closed = sys_g_dm
-    sys_cl_tf = control.ss2tf(sys_closed)
-
+    sys_gamma_to_alpha = control.ss(Ag, Bg, C_m[1, :], D_m[1, :])
+    sys_gamma_to_alpha_tf = control.ss2tf(sys_gamma_to_alpha)
+    
     # Paramètres
     delta_n_z = 3.0  # 3g load factor
     gamma_min = -1.0
     gamma_max = 1.0
 
-    # Trouver γ_max
-    try:
-        gamma_optimal = find_gamma_max(
-            sys_cl_tf, 
-            delta_n_z=delta_n_z, 
-            eq_res=eq_res, 
-            gamma_min=gamma_min, 
-            gamma_max=gamma_max
-        )
-        
-        print(f"\nOptimal flight path angle: γ_max = {gamma_optimal:.4f} rad = {np.degrees(gamma_optimal):.2f}°")
-        
-        # Vérification : calculer alpha_max
-        alpha_max = saturation_analysis(eq_res, delta_n_z)
-        print(f"Maximum angle of attack: α_max = {alpha_max:.4f} rad = {np.degrees(alpha_max):.2f}°")
-        
-        # Afficher la réponse pour ce γ_max
-        response = response_alpha_to_gamma(sys_cl_tf, gamma_optimal, delta_n_z, eq_res)
-        print(f"Verification: max(α(t)) - α_max = {response:.6f} (should be ≈ 0)")
-        
-    except Exception as e:
-        print(f"Error in saturation analysis: {e}")
+    alpha_max = saturation_analysis(eq_res, delta_n_z)
+
+    def f_gamma_sat(gamma_sat):
+
+        t, alpha_response = control.step_response(sys_gamma_to_alpha_tf, T=np.linspace(0, 20, 2000))
+        alpha_response_scaled = alpha_response * gamma_sat
+        alpha_max_response = np.max(alpha_response_scaled)
+        diff = alpha_max_response - alpha_max
+
+        return diff
+
+    gamma_min = 0.001
+    gamma_max_search = 1.0 # rad
+    f_min = f_gamma_sat(gamma_min)
+    f_max = f_gamma_sat(gamma_max_search)
+
+    if f_min * f_max < 0:
+        gamma_sat_solution = bisect(f_gamma_sat, gamma_min, gamma_max_search, xtol=1e-8)
+        print("\nGamma_max = ", gamma_sat_solution)
+    else:
+        print("\n Cannot apply bisection")
+        for gmax in [0.5, 0.3, 0.2, 0.1]:
+            f_test = f_gamma_sat(gmax)
+            if f_min * f_test < 0:
+                gamma_sat_solution = bisect(f_gamma_sat, gamma_min, gmax, xtol=1e-8)
+                print("\n Gamma_max = ", gamma_sat_solution)
+                break
+
+
 
 
 
