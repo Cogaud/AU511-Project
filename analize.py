@@ -354,4 +354,31 @@ def saturation_analysis(eq_res, delta_n_z):
 
     return a_max
 
-
+def response_alpha_to_gamma(sys_closed, gamma_csat, delta_n_z=3.0, eq_res=None, t_final=10):
+    """
+    Simule la réponse α en fonction de γ_csat et retourne max(α(t)) - α_max
+    
+    Paramètres:
+    - sys_closed: système en boucle fermée (transfert entre γ_csat et α)
+    - gamma_csat: amplitude de l'échelon d'entrée
+    - delta_n_z: facteur de charge transversal (par défaut 3 g)
+    - eq_res: dictionnaire de l'équilibre
+    - t_final: temps final de simulation
+    """
+    # Calculer α_max
+    alpha_max = saturation_analysis(eq_res, delta_n_z)
+    
+    # Simuler la réponse à un échelon unitaire
+    T = np.linspace(0, t_final, 1000)
+    res = control.step_response(sys_closed, T=T)
+    t = res.time
+    y = res.outputs
+    # Multiplier par l'amplitude γ_csat (réponse pour échelon d'amplitude gamma_csat)
+    y = y * gamma_csat
+    # print("y : ", y)
+    # print("y shape : ",np.shape(y))
+    # Extraire α (indice 1 : alpha) de la réponse
+    # alpha_response = y[1, :]  # 2ème sortie est alpha
+    
+    # Retourner la différence max(α(t)) - α_max
+    return np.max(y) - alpha_max
